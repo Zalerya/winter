@@ -1,12 +1,12 @@
-package com.itu.prom16.sprint0;
+package com.itu.prom16.controller;
 
 import java.io.*;
 
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 
-//@WebServlet(name = "helloServlet", value = "/hello-servlet")
-public class HelloServlet extends HttpServlet {
+@WebServlet(name = "DefaultController", value = "/")
+public class DefaultController extends HttpServlet {
     private String message;
 
     public void init() {
@@ -19,8 +19,13 @@ public class HelloServlet extends HttpServlet {
         // Hello
         PrintWriter out = response.getWriter();
         out.println("<html><body>");
-        out.println("<h1>" + message + "</h1>");
+        out.println("<h1>" + request.getRequestURI() + "</h1>");
         out.println("</body></html>");
+        //request.getRequestURI();
+    }
+
+    public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        doGet(request, response);
     }
 
     public void destroy() {

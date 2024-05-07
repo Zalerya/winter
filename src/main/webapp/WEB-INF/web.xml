@@ -5,13 +5,13 @@
          version="5.0">
 
     <!-- Servlet pour gérer les opérations sur les chambres -->
-    <servlet>
-        <servlet-name>HelloServlet</servlet-name>
-        <servlet-class>com.itu.prom16.sprint0.HelloServlet</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>HelloServlet</servlet-name>
-        <url-pattern>/</url-pattern>
-    </servlet-mapping>
+<!--    <servlet>-->
+<!--        <servlet-name>HelloServlet</servlet-name>-->
+<!--        <servlet-class>com.itu.prom16.sprint0.HelloServlet</servlet-class>-->
+<!--    </servlet>-->
+<!--    <servlet-mapping>-->
+<!--        <servlet-name>HelloServlet</servlet-name>-->
+<!--        <url-pattern>/</url-pattern>-->
+<!--    </servlet-mapping>-->
 
 </web-app>
