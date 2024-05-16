@@ -20,18 +20,23 @@ public class DefaultController extends HttpServlet {
         message = "Hello World!";
     }
 
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         response.setContentType("text/html");
+        processRequest(request, response);
 
         // Hello
         PrintWriter out = response.getWriter();
         out.println("<html><body>");
         out.println("<h1>" + request.getRequestURI() + "</h1>");
+        for ( String unController:
+             nomController) {
+            out.println("<p>" + unController + "</p>");
+        }
         out.println("</body></html>");
         //request.getRequestURI();
     }
 
-    public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         doGet(request, response);
     }
 
