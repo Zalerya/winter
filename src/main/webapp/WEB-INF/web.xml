@@ -14,4 +14,17 @@
 <!--        <url-pattern>/</url-pattern>-->
 <!--    </servlet-mapping>-->
 
+    <servlet>
+        <servlet-name>DefaultController</servlet-name>
+        <servlet-class>com.itu.prom16.controller.DefaultController</servlet-class>
+        <init-param>
+            <param-name>controllerChecker</param-name>
+            <param-value>com.itu.prom16.controller</param-value>
+        </init-param>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>DefaultController</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+
 </web-app>
