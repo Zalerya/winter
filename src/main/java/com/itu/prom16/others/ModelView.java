@@ -9,6 +9,10 @@ public class ModelView {
     String url;
     HashMap <String, Object> data;
 
+    public ModelView() {
+
+    }
+
     public String getUrl() {
         return url;
     }
