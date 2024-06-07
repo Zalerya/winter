@@ -13,6 +13,7 @@ import java.util.Map;
 import com.itu.prom16.annotation.Controller;
 import com.itu.prom16.annotation.Get;
 import com.itu.prom16.others.ClassMethod;
+import com.itu.prom16.others.ModelView;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
@@ -56,6 +57,7 @@ public class DefaultController extends HttpServlet {
         Class clazz = Class.forName(classMethod.getClazz());
         Method method = clazz.getMethod(classMethod.getMethod());
         Object result = method.invoke(clazz.newInstance());
+
         return result;
     }
 
@@ -103,12 +105,20 @@ public class DefaultController extends HttpServlet {
         out.println("<h1>" + urlDemande + "</h1>");
         if (mesController.containsKey(urlDemande)) {
             ClassMethod classMethod = mesController.get(urlDemande);
-            String result = (String) this.invokeMethode(classMethod);
-            out.println("<p>" + "TROUVE" + "</p>");
-            out.println("<p>" + "RESULT" + result + "</p>");
-            //out.println("<p>" + classMethod.getClazz() + "</p>");
-            //out.println("<p>" + classMethod.getMethod() + "</p>");
+
+            if (this.invokeMethode(classMethod).getClass() == ModelView.class) {
+                ModelView modelView = (ModelView) this.invokeMethode(classMethod);
+                modelView.execute(request, response);
+                request.getRequestDispatcher(modelView.getUrl()).forward(request, response);
+            } else if (this.invokeMethode(classMethod).getClass() == String.class) {
+                String result = (String) this.invokeMethode(classMethod);
+                out.println("<p>" + "TROUVE" + "</p>");
+                out.println("<p>" + "RESULT" + result + "</p>");
+                //out.println("<p>" + classMethod.getClazz() + "</p>");
+                //out.println("<p>" + classMethod.getMethod() + "</p>");
+            }
         }
+
         else {
             out.println("<p>" + "INEXISTANT" + "</p>");
         }
