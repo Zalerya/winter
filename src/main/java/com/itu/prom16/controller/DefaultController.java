@@ -19,7 +19,7 @@ import jakarta.servlet.http.*;
 public class DefaultController extends HttpServlet {
     HashMap<String, ClassMethod> mesController = new HashMap();
 
-    public void peuplerList (String controllerPackage) throws ClassNotFoundException {
+    public void peuplerList (String controllerPackage) throws Exception {
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         String dir = controllerPackage.replace(".", "/");
         URL url = classLoader.getResource(dir);
@@ -28,8 +28,7 @@ public class DefaultController extends HttpServlet {
             //System.out.println(directory.toString());
             if (directory.exists() && directory.isDirectory()) {
                 File[] files = directory.listFiles();
-                //System.out.println(files.length);
-                if (files != null) {
+                if (files != null && files.length > 0) {
                     for (File file : files) {
                         if (file.isFile() && file.getName().endsWith(".class")) {
                             String className = file.getName().substring(0, file.getName().lastIndexOf('.'));
@@ -39,12 +38,20 @@ public class DefaultController extends HttpServlet {
                                 for (Method methode : lesMethodes) {
                                     if (methode.isAnnotationPresent(Get.class)) {
                                         Get get = methode.getAnnotation(Get.class);
-                                        mesController.put(get.path(), new ClassMethod(clazz.getName(), methode.getName()));
+                                        if (mesController.containsKey(get.path())) {
+                                            throw new Exception("Le chemin '" + get.path() + "' existe en double.");
+                                        }
+                                        else {
+                                            mesController.put(get.path(), new ClassMethod(clazz.getName(), methode.getName()));
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                }
+                else {
+                    throw new Exception("Le dossier est vide.");
                 }
             }
         }
@@ -90,26 +97,17 @@ public class DefaultController extends HttpServlet {
         try {
             String controllerPackage = getServletConfig().getInitParameter("controllerChecker");
             this.peuplerList(controllerPackage);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
-
     }
 
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         //response.setContentType("text/html");
         try {
             processRequest(request, response);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        } catch (InstantiationException e) {
-            throw new RuntimeException(e);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            response.sendError(HttpServletResponse.SC_NOT_FOUND, e.getMessage());
         }
     }
 
