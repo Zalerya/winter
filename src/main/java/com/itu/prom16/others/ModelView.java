@@ -1,8 +1,10 @@
 package com.itu.prom16.others;
 
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
 import java.util.HashMap;
 
 public class ModelView {
@@ -55,5 +57,10 @@ public class ModelView {
                 request.setAttribute(cle, valeur);
             });
         }
+    }
+
+    public void executeAndRedirect (HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        this.execute(request, response);
+        request.getRequestDispatcher(this.getUrl()).forward(request, response);
     }
 }

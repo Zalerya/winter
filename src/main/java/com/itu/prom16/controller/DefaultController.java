@@ -1,22 +1,19 @@
 package com.itu.prom16.controller;
 
 import java.io.*;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.itu.prom16.annotation.Controller;
 import com.itu.prom16.annotation.Get;
+import com.itu.prom16.annotation.Param;
 import com.itu.prom16.others.ClassMethod;
 import com.itu.prom16.others.ModelView;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
-import jakarta.servlet.annotation.*;
 
 //@WebServlet(name = "DefaultController", value = "/")
 public class DefaultController extends HttpServlet {
@@ -68,6 +65,34 @@ public class DefaultController extends HttpServlet {
         return result;
     }
 
+    public Object invokeMethodeObject (ClassMethod classMethod, HttpServletRequest request, HttpServletResponse response) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException, ServletException, IOException {
+        Class clazz = Class.forName(classMethod.getClazz());
+        Method method = clazz.getMethod(classMethod.getMethod());
+        if (this.invokeMethode(classMethod).getClass() == ModelView.class) {
+            ModelView modelView = (ModelView) this.invokeMethode(classMethod);
+            modelView.executeAndRedirect(request, response);
+            return null;
+        }
+        else {
+            int nbParam = method.getParameterCount();
+            Object[] params = new Object[nbParam];
+            Parameter[] paramsFromMethod = method.getParameters();
+
+            for (int i = 0; i < nbParam; i++) {
+                Parameter individualParam = paramsFromMethod[i];
+                if (individualParam.isAnnotationPresent(Param.class)) {
+                    Param detailsParam = individualParam.getAnnotation(Param.class);
+                    params[i] = individualParam.getType().cast(request.getParameter(detailsParam.name()));
+                }
+                else {
+                    params[i] = individualParam.getType().cast(request.getParameter(individualParam.getName()));
+                }
+            }
+
+            return method.invoke(clazz, params);
+        }
+    }
+
     public void init() {
         try {
             String controllerPackage = getServletConfig().getInitParameter("controllerChecker");
@@ -94,8 +119,10 @@ public class DefaultController extends HttpServlet {
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        sprint6(request, response);
+    }
 
-        // Hello
+    public void sprint6 (HttpServletRequest request, HttpServletResponse response) throws Exception {
         PrintWriter out = response.getWriter();
 
         String urlDemande = request.getRequestURI().replace(request.getContextPath(), "");
@@ -107,27 +134,114 @@ public class DefaultController extends HttpServlet {
             out.println("</body></html>");
         }
 
-        else if (mesController.containsKey(urlDemande)) {
-            ClassMethod classMethod = mesController.get(urlDemande);
+        else {
+            if (mesController.containsKey(urlDemande)) {
+                ClassMethod classMethod = mesController.get(urlDemande);
+                Class clazz = Class.forName(classMethod.getClazz());
+                Method[] methods = clazz.getDeclaredMethods();
+                Method methodToInvoke = null;
 
-            if (this.invokeMethode(classMethod).getClass() == ModelView.class) {
-                ModelView modelView = (ModelView) this.invokeMethode(classMethod);
-                modelView.execute(request, response);
-                request.getRequestDispatcher(modelView.getUrl()).forward(request, response);
-            } else if (this.invokeMethode(classMethod).getClass() == String.class) {
-                String result = (String) this.invokeMethode(classMethod);
-                out.println("<html><body>");
-                out.println("<h1>" + urlDemande + "</h1>");
-                out.println("<p>" + "RESULT" + result + "</p>");
-                out.println("</body></html>");
+                for (Method method : methods) {
+                    if (method.getName().compareTo(classMethod.getMethod()) == 0
+                            && method.isAnnotationPresent(Get.class)) {
+                        if (method.getAnnotation(Get.class).path().equalsIgnoreCase(urlDemande)) {
+                            methodToInvoke = method;
+                            break;
+                        }
+                    }
+                }
+
+                int nbParameter = methodToInvoke.getParameterCount();
+                if (nbParameter == 0) {
+                    if (this.invokeMethode(classMethod).getClass() == ModelView.class) {
+                        ModelView modelView = (ModelView) this.invokeMethode(classMethod);
+                        modelView.execute(request, response);
+                        request.getRequestDispatcher(modelView.getUrl()).forward(request, response);
+                    } else if (this.invokeMethode(classMethod).getClass() == String.class) {
+                        String result = (String) this.invokeMethode(classMethod);
+                        out.println("<html><body>");
+                        out.println("<h1>" + urlDemande + "</h1>");
+                        out.println("<p>" + "RESULT" + result + "</p>");
+                        out.println("</body></html>");
+                    }
+                    else {
+                        throw new Exception ("Le type de retour n'est pas pris en charge. (String et ModelView uniquement)");
+                    }
+                }
+                else {
+                    Parameter[] parametersDetails = methodToInvoke.getParameters();
+                    Object[] params = new Object[nbParameter];
+                    for (int i = 0; i < nbParameter; i++) {
+                        Parameter parameter = parametersDetails[i];
+                        String parameterDataString = null;
+                        if (parameter.isAnnotationPresent(Param.class)) {
+                            parameterDataString = request.getParameter(parameter.getAnnotation(Param.class).name());
+                        }
+                        else {
+                            parameterDataString = request.getParameter(parameter.getName());
+                        }
+                        params[i] = parameter.getType().cast(parameterDataString);
+                    }
+                    if (methodToInvoke.invoke(clazz.newInstance(), params) == ModelView.class) {
+                        ModelView modelView = (ModelView) this.invokeMethode(classMethod);
+                        modelView.execute(request, response);
+                        request.getRequestDispatcher(modelView.getUrl()).forward(request, response);
+                    } else if (methodToInvoke.invoke(clazz.newInstance(), params) == String.class) {
+                        String result = (String) this.invokeMethode(classMethod);
+                        out.println("<html><body>");
+                        out.println("<h1>" + urlDemande + "</h1>");
+                        out.println("<p>" + "RESULT" + result + "</p>");
+                        out.println("</body></html>");
+                    }
+                    else {
+                        throw new Exception ("Le type de retour n'est pas pris en charge. (String et ModelView uniquement)");
+                    }
+
+                }
             }
+
             else {
-                throw new Exception ("Le type de retour n'est pas pris en charge. (String et ModelView uniquement)");
+                throw new Exception("L'URL est introuvable.");
             }
+        }
+    }
+
+    public void sprint5 (HttpServletRequest request, HttpServletResponse response) throws Exception {
+        PrintWriter out = response.getWriter();
+
+        String urlDemande = request.getRequestURI().replace(request.getContextPath(), "");
+
+        if (urlDemande.equalsIgnoreCase("/")) {
+            out.println("<html><body>");
+            out.println("<h1>" + urlDemande + "</h1>");
+            out.println("<p>" + "Page d'acceuil" + "</p>");
+            out.println("</body></html>");
         }
 
         else {
-            throw new Exception("L'URL est introuvable.");
+            if (mesController.containsKey(urlDemande)) {
+                ClassMethod classMethod = mesController.get(urlDemande);
+                Class clazz = Class.forName(classMethod.getClazz());
+
+                if (this.invokeMethode(classMethod).getClass() == ModelView.class) {
+                    ModelView modelView = (ModelView) this.invokeMethode(classMethod);
+                    modelView.execute(request, response);
+                    request.getRequestDispatcher(modelView.getUrl()).forward(request, response);
+                } else if (this.invokeMethode(classMethod).getClass() == String.class) {
+                    String result = (String) this.invokeMethode(classMethod);
+                    out.println("<html><body>");
+                    out.println("<h1>" + urlDemande + "</h1>");
+                    out.println("<p>" + "RESULT" + result + "</p>");
+                    out.println("</body></html>");
+                }
+                else {
+                    throw new Exception ("Le type de retour n'est pas pris en charge. (String et ModelView uniquement)");
+                }
+            }
+
+            else {
+                throw new Exception("L'URL est introuvable.");
+            }
         }
     }
 }
