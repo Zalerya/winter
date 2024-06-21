@@ -1,6 +1,7 @@
 package com.itu.prom16.controller;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -9,9 +10,11 @@ import java.util.*;
 
 import com.itu.prom16.annotation.Controller;
 import com.itu.prom16.annotation.Get;
+import com.itu.prom16.annotation.Input;
 import com.itu.prom16.annotation.Param;
 import com.itu.prom16.others.ClassMethod;
 import com.itu.prom16.others.ModelView;
+import com.itu.prom16.others.Tools;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
 
@@ -119,8 +122,92 @@ public class DefaultController extends HttpServlet {
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        sprint6(request, response);
+        sprint7(request, response);
     }
+
+    public void sprint7(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        PrintWriter out = response.getWriter();
+        String urlDemande = request.getRequestURI().replace(request.getContextPath(), "");
+
+        if (urlDemande.equalsIgnoreCase("/")) {
+            out.println("<html><body>");
+            out.println("<h1>" + urlDemande + "</h1>");
+            out.println("<p>" + "Page d'acceuil" + "</p>");
+            out.println("</body></html>");
+        } else {
+            if (mesController.containsKey(urlDemande)) {
+                ClassMethod classMethod = mesController.get(urlDemande);
+                Class<?> clazz = Class.forName(classMethod.getClazz());
+                Method[] methods = clazz.getDeclaredMethods();
+                Method methodToInvoke = null;
+
+                for (Method method : methods) {
+                    if (method.getName().compareTo(classMethod.getMethod()) == 0 && method.isAnnotationPresent(Get.class)) {
+                        if (method.getAnnotation(Get.class).path().equalsIgnoreCase(urlDemande)) {
+                            methodToInvoke = method;
+                            break;
+                        }
+                    }
+                }
+
+                int nbParameter = methodToInvoke.getParameterCount();
+                Object[] params = new Object[nbParameter];
+                Parameter[] parametersDetails = methodToInvoke.getParameters();
+
+                for (int i = 0; i < nbParameter; i++) {
+                    Parameter parameter = parametersDetails[i];
+                    Class<?> parameterType = parameter.getType();
+                    if (Tools.isCustomClass(parameterType)) {
+                        Object paramObject = parameterType.newInstance();
+                        Field[] fields = parameterType.getDeclaredFields();
+
+                        for (Field field : fields) {
+                            String paramName;
+                            if (field.isAnnotationPresent(Input.class)) {
+                                paramName = field.getAnnotation(Input.class).name();
+                            } else {
+                                paramName = field.getName();
+                            }
+                            String paramValue = request.getParameter(paramName);
+                            if (paramValue != null) {
+                                Method setter = parameterType.getMethod("set" + capitalize(field.getName()), field.getType());
+                                setter.invoke(paramObject, field.getType().cast(paramValue));
+                            }
+                        }
+                        params[i] = paramObject;
+                    } else {
+                        String paramValue = request.getParameter(parameter.getName());
+                        params[i] = parameterType.cast(paramValue);
+                    }
+                }
+
+                Object result = methodToInvoke.invoke(clazz.newInstance(), params);
+                if (result instanceof ModelView) {
+                    ModelView modelView = (ModelView) result;
+                    modelView.execute(request, response);
+                    request.getRequestDispatcher(modelView.getUrl()).forward(request, response);
+                } else if (result instanceof String) {
+                    String resultString = (String) result;
+                    out.println("<html><body>");
+                    out.println("<h1>" + urlDemande + "</h1>");
+                    out.println("<p>" + "RESULT" + resultString + "</p>");
+                    out.println("</body></html>");
+                } else {
+                    throw new Exception("Le type de retour n'est pas pris en charge. (String et ModelView uniquement)");
+                }
+            } else {
+                throw new Exception("L'URL est introuvable.");
+            }
+        }
+    }
+
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
+    }
+
 
     public void sprint6 (HttpServletRequest request, HttpServletResponse response) throws Exception {
         PrintWriter out = response.getWriter();
